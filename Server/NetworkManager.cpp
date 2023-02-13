@@ -135,32 +135,28 @@ std::string NetworkManager::parse(const std::string msg)
 	{
 		splitStrList.push_back(splitStr);
 	}
-	
-	for (std::string str : splitStrList)
-		std::cout << str << " " << '\n';
 
 	if (splitStrList.size() == 0 || commandSet.find(splitStrList[0]) == commandSet.end())
 	{
-		sendMsg = "정확한 명령어 형식으로 입력해주세요.\n";
+		sendMsg = "정확한 명령어 형식으로 입력해주세요.\r\n";
 	}
 	else
 	{
-		std::string commandStr;
-		std::transform(splitStrList[0].begin(), splitStrList[0].end(), commandStr.begin(), ::tolower);
+		std::transform(splitStrList[0].begin(), splitStrList[0].end(), splitStrList[0].begin(), [](char const& c)
+			{
+				return std::tolower(c);
+			});
+		std::string commandStr = splitStrList[0];
 		std::cout << "commandstr : " << commandStr << '\n';
 		Command command = Command::INITIAL;
 		int setIdx = 0;
 		for (auto iter = commandSet.begin(); iter != commandSet.end(); iter++)
 		{
-			// 아니 여기 비교 안먹히네;
+			std::string iterStr = *iter;
 			if (commandStr == *iter)
 			{
 				command = static_cast<Command>(setIdx);
 				break;
-			}
-			else
-			{
-				std::cout << commandStr << " " << *iter << '\n';
 			}
 			setIdx++;
 		}
@@ -170,7 +166,7 @@ std::string NetworkManager::parse(const std::string msg)
 		case Command::LOGIN:
 			// donghyun : ip, 포트 등의 sockaddr_in 정보, 닉네임
 			serverManager->login(clntAdr, splitStrList[1]);
-			sendMsg = std::format("로그인 되었습니다. ({})\n", splitStrList[1]);
+			sendMsg = std::format("로그인 되었습니다. ({})\r\n", splitStrList[1]);
 		}
 	}
 	return sendMsg;

@@ -21,7 +21,7 @@ private:
 	fd_set reads, cpyReads;
 
 	std::unique_ptr<ServerManager> serverManager;
-	std::set<std::string> commandSet = { "h", "j", "lt", "o", "pf", "st", "to", "us", "x","login" };
+	std::set<std::string> commandSet = { "h", "j", "login", "lt", "o", "pf", "st", "to", "us", "x"};
 
 	int adrSize;
 	int totalStrLen = 0, strLen = 0, fdNum;
@@ -38,6 +38,7 @@ enum class Command
 {
 	H,
 	J, 
+	LOGIN,
 	LT,
 	O, 
 	PF,
@@ -45,6 +46,5 @@ enum class Command
 	TO,
 	US,
 	X, 
-	LOGIN,
 	INITIAL
 };
