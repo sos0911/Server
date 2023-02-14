@@ -3,15 +3,28 @@
 #include "Room.h"
 #include <map>
 #include <WinSock2.h>
+#include "NetworkManager.h"
 
 class ServerManager
 {
 private:
+	ServerManager();
+	ServerManager(const ServerManager& ref) {}
+	ServerManager& operator=(const ServerManager& ref) {}
+	~ServerManager() {}
+
+	// donghyun : key는 name이다.
 	std::map<std::string, Player> playerList;
 	std::map<std::string, Room> roomList;
+
 public:
-	ServerManager();
-	void login(SOCKADDR_IN sockInfo, std::string name);
+
+	// donghyun : 싱글톤 구현
+	static ServerManager& getInstance();
+
+	void init();
+	void login(const int clntfd, std::string name);
+	void showHelp(const int clntfd);
 	void createRoom();
 	// donghyun (0213) : 이건 대기실에 있을 때만 방 폭파하게 해야 할듯
 	void deleteRoom();
@@ -19,5 +32,7 @@ public:
 	void showRoomInfo();
 	void showRoomList();
 	void joinRoom();
-	void start();
+
+	void addPlayerUsingFd(Player player);
+	const unsigned long findPlayerFd(const std::string playerName);
 };

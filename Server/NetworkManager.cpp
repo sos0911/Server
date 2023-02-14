@@ -4,15 +4,24 @@
 #include <iostream>
 #include <algorithm>
 #include <format>
+#include <WS2tcpip.h>
 
 
-NetworkManager::NetworkManager(int argc, char* argv[])
+NetworkManager& NetworkManager::getInstance()
 {
-	serverManager = std::make_unique<ServerManager>();
-	execute(argc, argv);
+	static NetworkManager instance;
+	return instance;
 }
 
-void NetworkManager::execute(int argc, char* argv[])
+void NetworkManager::init(int in_argc, char* in_argv[])
+{
+	argc = in_argc;
+	argv = in_argv;
+}
+
+
+
+void NetworkManager::execute()
 {
 	if (argc != 2)
 	{
@@ -66,13 +75,28 @@ void NetworkManager::execute(int argc, char* argv[])
 		{
 			if (FD_ISSET(reads.fd_array[i], &cpyReads))
 			{
+				// donghyun : 새로 연결 요청하는 클라 소켓의 경우
 				if (reads.fd_array[i] == hServsock)
 				{
 					adrSize = sizeof(clntAdr);
 					hClntSock = accept(hServsock, (SOCKADDR*)&clntAdr, &adrSize);
+
+					sendMsg(i, "접속되었습니다.\n\r");
+
 					FD_SET(hClntSock, &reads);
 					printf("connected client : %lu\n", static_cast<unsigned long>(hClntSock));
+					char clntIP[20] = { 0 };
+					printf("client ip : %s, client port : %d\n", inet_ntop(AF_INET, &clntAdr.sin_addr, 
+						clntIP, sizeof(clntIP)), ntohs(clntAdr.sin_port));
+					/*std::string ipport = clntIP;
+					ipport += ":";
+					ipport += ntohs(clntAdr.sin_port);
+					std::cout << "client ip-port : " << ipport << '\n';*/
+					int hClntSockNum = static_cast<unsigned long>(hClntSock);
+					Player player(clntIP, ntohs(clntAdr.sin_port), hClntSockNum);
+					ServerManager::getInstance().addPlayerUsingFd(player);
 				}
+				// donghyun : 이미 연결된 클라 소켓에게서 데이터를 받는 경우
 				else
 				{
 					strLen = recv(reads.fd_array[i], buf + totalStrLen, BUF_SIZE - 1, 0);
@@ -93,24 +117,21 @@ void NetworkManager::execute(int argc, char* argv[])
 							std::string serverMsg = "message from server : ";
 							std::string echoMsg = buf;
 							echoMsg = echoMsg.substr(0, totalStrLen);
-							std::string sendMsg = serverMsg + echoMsg;
+							std::string Msg = serverMsg + echoMsg;
+
+							// 에코용 방송
+							sendMsg(i, Msg);
 
 							std::string printMsg = "received message from client : " + echoMsg;
 							printf("%s", printMsg.c_str());
 
 							std::string parsingMsg = echoMsg.substr(0, totalStrLen - 2);
 							// donghyun : parsing
-							sendMsg = parse(parsingMsg);
-
-							send(reads.fd_array[i], sendMsg.c_str(), static_cast<int>(sendMsg.size()), 0);
+							parse(i, parsingMsg);
 							totalStrLen = 0;
 							break;
 						}
 					}
-					/*else
-					{
-						send(reads.fd_array[i], buf, strLen, 0);
-					}*/
 				}
 			}
 		}
@@ -126,11 +147,11 @@ void NetworkManager::ErrorHandling(const char* message)
 	exit(1);
 }
 
-std::string NetworkManager::parse(const std::string msg)
+void NetworkManager::parse(const int clntfd, const std::string msg)
 {
 	std::stringstream sStream(msg);
 	std::vector<std::string> splitStrList;
-	std::string splitStr, sendMsg;
+	std::string splitStr, Msg;
 	while (sStream >> splitStr)
 	{
 		splitStrList.push_back(splitStr);
@@ -138,7 +159,7 @@ std::string NetworkManager::parse(const std::string msg)
 
 	if (splitStrList.size() == 0 || commandSet.find(splitStrList[0]) == commandSet.end())
 	{
-		sendMsg = "정확한 명령어 형식으로 입력해주세요.\r\n";
+		Msg = "정확한 명령어 형식으로 입력해주세요.\r\n";
 	}
 	else
 	{
@@ -165,9 +186,24 @@ std::string NetworkManager::parse(const std::string msg)
 		{
 		case Command::LOGIN:
 			// donghyun : ip, 포트 등의 sockaddr_in 정보, 닉네임
-			serverManager->login(clntAdr, splitStrList[1]);
-			sendMsg = std::format("로그인 되었습니다. ({})\r\n", splitStrList[1]);
+			ServerManager::getInstance().login(clntfd, splitStrList[1]);
+			Msg = std::format("로그인 되었습니다. ({})\r\n", splitStrList[1]);
+		case Command::H:
+			ServerManager::getInstance().showHelp(clntfd);
+
 		}
 	}
-	return sendMsg;
+	sendMsg(clntfd, Msg);
 }
+
+void NetworkManager::sendMsg(const std::string playerName, const std::string msg)
+{
+	unsigned long readsIdx = ServerManager::getInstance().findPlayerFd(playerName);
+	send(reads.fd_array[readsIdx], msg.c_str(), static_cast<int>(msg.size()), 0);
+}
+
+void NetworkManager::sendMsg(const unsigned int clntFd, const std::string msg)
+{
+	send(reads.fd_array[clntFd], msg.c_str(), static_cast<int>(msg.size()), 0);
+}
+

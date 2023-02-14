@@ -5,22 +5,20 @@
 #include <WinSock2.h>
 #include <string>
 #include "NetworkManager.h"
+#include "ServerManager.h"
 
 #define BUF_SIZE 1024
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
 
-void ErrorHandling(const char* message);
-
 int main(int argc, char* argv[])
 {
-	NetworkManager NetworkManager(argc, argv);
+	// donghyun : 두 매니저는 싱글톤으로 사용
+	NetworkManager& networkManager = NetworkManager::getInstance();
+	networkManager.init(argc, argv);
 
+	ServerManager& serverManager = ServerManager::getInstance();
+	serverManager.init();
+
+	networkManager.execute();
 	return 0;
-}
-
-void ErrorHandling(const char* message)
-{
-	fputs(message, stderr);
-	fputc('\n', stderr);
-	exit(1);
 }
