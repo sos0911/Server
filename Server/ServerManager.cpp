@@ -21,7 +21,6 @@ void ServerManager::init()
 
 void ServerManager::login(Player& player)
 {
-	std::cout << "before add : "<<player.m_ip << '\n';
 	if (addPlayer(player) == -1)
 	{
 		NetworkManager::getInstance().sendMsg(player.m_fdSetIdx, "해당 이름은 사용할 수 없습니다.\n\r");
@@ -53,9 +52,27 @@ void ServerManager::showHelp(const int clntfd)
 }
 
 
-void ServerManager::createRoom()
+void ServerManager::createRoom(const int clntfdIdx, std::string maxCntStr, std::string roomName)
 {
-
+	Player* playerPtr = nullptr;
+	for (auto iter = playerList.begin(); iter != playerList.end(); iter++)
+	{
+		auto curPlayer = iter->second;
+		if (curPlayer.m_fdSetIdx == clntfdIdx)
+		{
+			playerPtr = &curPlayer;
+			break;
+		}
+	}
+	Room room(roomName, std::stoi(maxCntStr), *playerPtr);
+	roomList[room.roomNum] = room;
+	// donghyun : 방장에게도 속한 방이 있다고 표시해주기
+	playerPtr->m_roomNum = room.roomNum;
+	
+	std::string msg = "";
+	msg += "** 대화방이 개설되었습니다.\n\r";
+	msg += std::format("**{}님이 들어오셨습니다. (현재인원 {} / {})\n\r", playerPtr->m_name, room.curPartCnt, room.maxPartCnt);
+	NetworkManager::getInstance().sendMsg(clntfdIdx, msg);
 }
 
 void ServerManager::deleteRoom()
@@ -102,6 +119,43 @@ void ServerManager::joinRoom()
 
 }
 
+int ServerManager::getChatRoomNum(u_int clntfdIdx)
+{
+	for (auto iter = playerList.begin(); iter != playerList.end(); iter++)
+	{
+		auto player = iter->second;
+		if (player.m_fdSetIdx == clntfdIdx)
+		{
+			return player.m_roomNum;
+		}
+	}
+	// donghyun : 못찾았을때는 문제가 있음.
+	return -2;
+}
+void ServerManager::broadCastInRoom(u_int clntfdIdx, int roomNum, std::string& msg)
+{
+	Room& room = roomList[roomNum];
+	size_t roomPartSize = room.roomPartInfo.size();
+
+	std::string broadMsg = "";
+	for (auto iter = playerList.begin(); iter != playerList.end(); iter++)
+	{
+		auto player = iter->second;
+		if (player.m_fdSetIdx == clntfdIdx)
+		{
+			broadMsg += player.m_name + " > ";
+			break;
+		}
+	}
+	broadMsg += msg + "\n\r";
+
+	for (size_t i = 0; i < roomPartSize; i++)
+	{
+		// donghyun : 자기 자신도 브로드캐스팅함
+		NetworkManager::getInstance().sendMsg(room.roomPartInfo[i].first.m_fdSetIdx, broadMsg);
+	}
+}
+
 // donghyun : 첫 클라 소켓 연결 요청 시에 사용됨
 int ServerManager::addPlayer(Player& player)
 {
@@ -111,17 +165,7 @@ int ServerManager::addPlayer(Player& player)
 	}
 	else
 	{
-		std::cout << "ip : "<< player.m_ip << '\n';
-		playerList[player.m_name] = player;
 		playerList.insert(std::make_pair(player.m_name, player));
-		std::cout << "insert!" << '\n';
-		std::cout << "ip : " << playerList[player.m_name].m_ip << '\n';
-		for (auto iter = playerList.begin(); iter != playerList.end(); iter++)
-		{
-			auto player = iter->second;
-			//이용자: aaa              접속지 : 127.0.0.1 : 63695
-			std::cout << player.m_ip << " ::: " << player.m_port << '\n';
-		}
 		//playerList[player.m_name] = player;
 		return 1;
 	}

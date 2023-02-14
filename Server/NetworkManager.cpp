@@ -127,6 +127,16 @@ void NetworkManager::execute()
 							printf("%s", printMsg.c_str());
 
 							std::string parsingMsg = echoMsg.substr(0, totalStrLen - 2);
+
+							// donghyun : 채팅방에 있는지 검사
+							// donghyun : 현재 채팅 모드일 경우 파싱 필요 X
+							int roomNum = ServerManager::getInstance().getChatRoomNum(i);
+							if (roomNum >= 0)
+							{
+								ServerManager::getInstance().broadCastInRoom(i, roomNum, parsingMsg);
+								continue;
+							}
+
 							// donghyun : parsing
 							std::stringstream sStream(parsingMsg);
 							std::vector<std::string> splitStrList;
@@ -138,7 +148,7 @@ void NetworkManager::execute()
 
 							if (splitStrList.size() == 0 || commandSet.find(splitStrList[0]) == commandSet.end())
 							{
-								Msg = "정확한 명령어 형식으로 입력해주세요.\r\n";
+								sendMsg(i, "정확한 명령어 형식으로 입력해주세요.\n\r");
 							}
 							else
 							{
@@ -192,6 +202,35 @@ void NetworkManager::execute()
 								{
 									ServerManager::getInstance().showPlayerList(i);
 									break;
+								}
+								case Command::LT:
+								{
+
+								}
+								case Command::ST:
+								{
+
+								}
+								case Command::PF:
+								{
+
+								}
+								case Command::TO:
+								{
+
+								}
+								case Command::O:
+								{
+									ServerManager::getInstance().createRoom(i, splitStrList[1], splitStrList[2]);
+									break;
+								}
+								case Command::J:
+								{
+
+								}
+								case Command::X:
+								{
+
 								}
 								}
 							}
