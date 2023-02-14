@@ -43,7 +43,7 @@ public:
 	void init(int argc, char* argv[]);
 	void execute();
 	void ErrorHandling(const char* message);
-	void parse(const int clntfd, const std::string msg);
+	std::vector<std::string> parse(const int clntfd, const std::string msg);
 	void sendMsg(const std::string playerName, const std::string msg);
 	void sendMsg(const unsigned int clntFd, const std::string msg);
 };

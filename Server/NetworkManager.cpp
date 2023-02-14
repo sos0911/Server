@@ -67,7 +67,7 @@ void NetworkManager::execute()
 		}
 		if (fdNum == 0)
 		{
-			puts("time-out!");
+			//puts("time-out!");
 			continue;
 		}
 
@@ -89,12 +89,13 @@ void NetworkManager::execute()
 					printf("client ip : %s, client port : %d\n", inet_ntop(AF_INET, &clntAdr.sin_addr, 
 						clntIP, sizeof(clntIP)), ntohs(clntAdr.sin_port));
 					/*std::string ipport = clntIP;
-					ipport += ":";
-					ipport += ntohs(clntAdr.sin_port);
+					iport += ":";
+					ipport += ntohs(clnptAdr.sin_port);
 					std::cout << "client ip-port : " << ipport << '\n';*/
-					int hClntSockNum = static_cast<unsigned long>(hClntSock);
-					Player player(clntIP, ntohs(clntAdr.sin_port), hClntSockNum);
-					ServerManager::getInstance().addPlayerUsingFd(player);
+					/*int hClntSockFd = static_cast<unsigned long>(hClntSock);
+					std::cout << "clntip : " << clntIP << '\n';
+					Player player(clntIP, ntohs(clntAdr.sin_port), hClntSockFd, i);
+					ServerManager::getInstance().addPlayerUsingFd(player);*/
 				}
 				// donghyun : 이미 연결된 클라 소켓에게서 데이터를 받는 경우
 				else
@@ -127,7 +128,73 @@ void NetworkManager::execute()
 
 							std::string parsingMsg = echoMsg.substr(0, totalStrLen - 2);
 							// donghyun : parsing
-							parse(i, parsingMsg);
+							std::stringstream sStream(parsingMsg);
+							std::vector<std::string> splitStrList;
+							std::string splitStr;
+							while (sStream >> splitStr)
+							{
+								splitStrList.push_back(splitStr);
+							}
+
+							if (splitStrList.size() == 0 || commandSet.find(splitStrList[0]) == commandSet.end())
+							{
+								Msg = "정확한 명령어 형식으로 입력해주세요.\r\n";
+							}
+							else
+							{
+								std::transform(splitStrList[0].begin(), splitStrList[0].end(), splitStrList[0].begin(), [](char const& c)
+									{
+										return std::tolower(c);
+									});
+								std::string commandStr = splitStrList[0];
+								std::cout << "commandstr : " << commandStr << '\n';
+								Command command = Command::INITIAL;
+								int setIdx = 0;
+								for (auto iter = commandSet.begin(); iter != commandSet.end(); iter++)
+								{
+									std::string iterStr = *iter;
+									if (commandStr == *iter)
+									{
+										command = static_cast<Command>(setIdx);
+										break;
+									}
+									setIdx++;
+								}
+
+								// donghyun : 명령어 실행
+								switch (command)
+								{
+								case Command::LOGIN:
+								{
+									// donghyun : ip, 포트 등의 sockaddr_in 정보, 닉네임
+									//ServerManager::getInstance().login(clntfd, splitStrList[1]);
+									// donghyun : make player struct
+									char clntIP[20] = { 0 };
+									inet_ntop(AF_INET, &clntAdr.sin_addr,
+										clntIP, sizeof(clntIP)), ntohs(clntAdr.sin_port);
+									int hClntSockFd = static_cast<unsigned long>(hClntSock);
+
+									
+
+									//Player player(clntIP, ntohs(clntAdr.sin_port), hClntSockFd, i, splitStrList[1]);
+									Player player(clntIP, ntohs(clntAdr.sin_port), hClntSockFd, i, splitStrList[1]);
+								
+
+									ServerManager::getInstance().login(player);
+
+								}
+								case Command::H:
+								{
+									ServerManager::getInstance().showHelp(i);
+									break;
+								}
+								case Command::US:
+								{
+									ServerManager::getInstance().showPlayerList(i);
+									break;
+								}
+								}
+							}
 							totalStrLen = 0;
 							break;
 						}
@@ -147,7 +214,7 @@ void NetworkManager::ErrorHandling(const char* message)
 	exit(1);
 }
 
-void NetworkManager::parse(const int clntfd, const std::string msg)
+std::vector<std::string> NetworkManager::parse(const int clntfd, const std::string msg)
 {
 	std::stringstream sStream(msg);
 	std::vector<std::string> splitStrList;
@@ -186,14 +253,19 @@ void NetworkManager::parse(const int clntfd, const std::string msg)
 		{
 		case Command::LOGIN:
 			// donghyun : ip, 포트 등의 sockaddr_in 정보, 닉네임
-			ServerManager::getInstance().login(clntfd, splitStrList[1]);
+			//ServerManager::getInstance().login(clntfd, splitStrList[1]);
 			Msg = std::format("로그인 되었습니다. ({})\r\n", splitStrList[1]);
+			break;
 		case Command::H:
 			ServerManager::getInstance().showHelp(clntfd);
-
+			break;
+		case Command::US:
+			ServerManager::getInstance().showPlayerList(clntfd);
+			break;
 		}
 	}
 	sendMsg(clntfd, Msg);
+	return splitStrList;
 }
 
 void NetworkManager::sendMsg(const std::string playerName, const std::string msg)

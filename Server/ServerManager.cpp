@@ -1,6 +1,7 @@
 #include "ServerManager.h"
 #include "NetworkManager.h"
 #include <iostream>
+#include <format>
 
 ServerManager::ServerManager()
 {
@@ -18,21 +19,16 @@ void ServerManager::init()
 }
 
 
-void ServerManager::login(const int clntfd, std::string name)
+void ServerManager::login(Player& player)
 {
-	std::string clntfdStr = std::to_string(clntfd);
-	if (playerList.find(clntfdStr) == playerList.end())
+	std::cout << "before add : "<<player.m_ip << '\n';
+	if (addPlayer(player) == -1)
 	{
-		std::cout << "로그인 오류! 해당 파일 디스크럽터를 가진 플레이어 객체가 없습니다." << '\n';
+		NetworkManager::getInstance().sendMsg(player.m_fdSetIdx, "해당 이름은 사용할 수 없습니다.\n\r");
 	}
 	else
 	{
-		playerList[clntfdStr].m_name = name;
-		Player player = playerList[clntfdStr];
-		// donghyun : 키가 바뀌어야 하므로 삭제 후 추가
-		playerList.erase(clntfdStr);
-		playerList[player.m_name] = player;
-		std::cout << "로그인 및 처리 완료!" << '\n';
+		NetworkManager::getInstance().sendMsg(player.m_fdSetIdx, std::format("로그인 되었습니다. ({})\r\n", player.m_name));
 	}
 }
 
@@ -82,20 +78,58 @@ void ServerManager::showRoomList()
 
 }
 
+void ServerManager::showPlayerList(const int clntfd)
+{
+	std::string msg = "";
+	msg.reserve(100);
+
+	msg += "------------------------- 이용자 목록 -------------------------\n\r";
+	for(auto iter = playerList.begin(); iter != playerList.end(); iter++)
+	{
+		auto player = iter->second;
+		//이용자: aaa              접속지 : 127.0.0.1 : 63695
+		std::string playerInfo = std::format("이용자: {}              접속지 : {} : {}\n\r", player.m_name, player.m_ip, player.m_port);
+		std::cout << player.m_ip << " ::: " << player.m_port << '\n';
+		msg += playerInfo;
+	}
+	msg += "---------------------------------------------------------------\n\r";
+
+	NetworkManager::getInstance().sendMsg(clntfd, msg);
+}
+
 void ServerManager::joinRoom()
 {
 
 }
 
 // donghyun : 첫 클라 소켓 연결 요청 시에 사용됨
-void ServerManager::addPlayerUsingFd(Player player)
+int ServerManager::addPlayer(Player& player)
 {
-	playerList[std::to_string(player.m_fd)] = player;
+	if (playerList.find(player.m_name) != playerList.end())
+	{
+		return -1;
+	}
+	else
+	{
+		std::cout << "ip : "<< player.m_ip << '\n';
+		playerList[player.m_name] = player;
+		playerList.insert(std::make_pair(player.m_name, player));
+		std::cout << "insert!" << '\n';
+		std::cout << "ip : " << playerList[player.m_name].m_ip << '\n';
+		for (auto iter = playerList.begin(); iter != playerList.end(); iter++)
+		{
+			auto player = iter->second;
+			//이용자: aaa              접속지 : 127.0.0.1 : 63695
+			std::cout << player.m_ip << " ::: " << player.m_port << '\n';
+		}
+		//playerList[player.m_name] = player;
+		return 1;
+	}
 }
 
-const unsigned long ServerManager::findPlayerFd(const std::string playerName)
+const unsigned int ServerManager::findPlayerFd(const std::string playerName)
 {
-	return playerList[playerName].m_fd;
+	return playerList[playerName].m_fdSetIdx;
 }
 
 

@@ -23,7 +23,7 @@ public:
 	static ServerManager& getInstance();
 
 	void init();
-	void login(const int clntfd, std::string name);
+	void login(Player& player);
 	void showHelp(const int clntfd);
 	void createRoom();
 	// donghyun (0213) : 이건 대기실에 있을 때만 방 폭파하게 해야 할듯
@@ -31,8 +31,9 @@ public:
 	void sendWhisper();
 	void showRoomInfo();
 	void showRoomList();
+	void showPlayerList(const int clntfd);
 	void joinRoom();
 
-	void addPlayerUsingFd(Player player);
-	const unsigned long findPlayerFd(const std::string playerName);
+	int addPlayer(Player& player);
+	const unsigned int findPlayerFd(const std::string playerName);
 };
