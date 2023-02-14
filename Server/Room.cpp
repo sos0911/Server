@@ -21,9 +21,3 @@ Room::Room(std::string in_roomName, int in_maxPartCnt, Player& in_player)
 	curPartCnt = 1;
 	roomNum = ServerManager::getInstance().getLastRoomNum();
 }
-
-// donghyun : 말한 본인 빼고 방송해야함!
-void Room::broadcastChat(Player& chattedPlayer)
-{
-
-}
