@@ -106,6 +106,7 @@ void NetworkManager::execute()
 					if (strLen == 0)
 					{
 						FD_CLR(reads.fd_array[i], &reads);
+						ServerManager::getInstance().quitPlayer(i);
 						closesocket(cpyReads.fd_array[i]);
 						printf("closed client : %lu\n", static_cast<unsigned long>(cpyReads.fd_array[i]));
 					}
@@ -133,109 +134,113 @@ void NetworkManager::execute()
 							int roomNum = ServerManager::getInstance().getChatRoomNum(i);
 							if (roomNum >= 0)
 							{
-								ServerManager::getInstance().broadCastInRoom(i, roomNum, parsingMsg);
-								continue;
-							}
-
-							// donghyun : parsing
-							std::stringstream sStream(parsingMsg);
-							std::vector<std::string> splitStrList;
-							std::string splitStr;
-							while (sStream >> splitStr)
-							{
-								splitStrList.push_back(splitStr);
-							}
-
-							if (splitStrList.size() == 0 || commandSet.find(splitStrList[0]) == commandSet.end())
-							{
-								sendMsg(i, "정확한 명령어 형식으로 입력해주세요.\n\r");
+								ServerManager::getInstance().broadCastChatInRoom(i, roomNum, parsingMsg);
 							}
 							else
 							{
-								std::transform(splitStrList[0].begin(), splitStrList[0].end(), splitStrList[0].begin(), [](char const& c)
-									{
-										return std::tolower(c);
-									});
-								std::string commandStr = splitStrList[0];
-								std::cout << "commandstr : " << commandStr << '\n';
-								Command command = Command::INITIAL;
-								int setIdx = 0;
-								for (auto iter = commandSet.begin(); iter != commandSet.end(); iter++)
+								// donghyun : parsing
+								std::stringstream sStream(parsingMsg);
+								std::vector<std::string> splitStrList;
+								std::string splitStr;
+								while (sStream >> splitStr)
 								{
-									std::string iterStr = *iter;
-									if (commandStr == *iter)
+									splitStrList.push_back(splitStr);
+								}
+
+								if (splitStrList.size() == 0 || commandSet.find(splitStrList[0]) == commandSet.end())
+								{
+									sendMsg(i, "정확한 명령어 형식으로 입력해주세요.\n\r");
+								}
+								else
+								{
+									std::transform(splitStrList[0].begin(), splitStrList[0].end(), splitStrList[0].begin(), [](char const& c)
+										{
+											return std::tolower(c);
+										});
+									std::string commandStr = splitStrList[0];
+									std::cout << "commandstr : " << commandStr << '\n';
+									Command command = Command::INITIAL;
+									int setIdx = 0;
+									for (auto iter = commandSet.begin(); iter != commandSet.end(); iter++)
 									{
-										command = static_cast<Command>(setIdx);
+										std::string iterStr = *iter;
+										if (commandStr == *iter)
+										{
+											command = static_cast<Command>(setIdx);
+											break;
+										}
+										setIdx++;
+									}
+
+									// donghyun : 명령어 실행
+									switch (command)
+									{
+									case Command::LOGIN:
+									{
+										// donghyun : ip, 포트 등의 sockaddr_in 정보, 닉네임
+										//ServerManager::getInstance().login(clntfd, splitStrList[1]);
+										// donghyun : make player struct
+										char clntIP[20] = { 0 };
+										inet_ntop(AF_INET, &clntAdr.sin_addr,
+											clntIP, sizeof(clntIP)), ntohs(clntAdr.sin_port);
+										int hClntSockFd = static_cast<unsigned long>(hClntSock);
+
+										//Player player(clntIP, ntohs(clntAdr.sin_port), hClntSockFd, i, splitStrList[1]);
+										Player player(clntIP, ntohs(clntAdr.sin_port), hClntSockFd, i, splitStrList[1]);
+
+										ServerManager::getInstance().login(player);
+
+									}
+									case Command::H:
+									{
+										ServerManager::getInstance().showHelp(i);
 										break;
 									}
-									setIdx++;
+									case Command::US:
+									{
+										ServerManager::getInstance().showPlayerList(i);
+										break;
+									}
+									case Command::LT:
+									{
+										ServerManager::getInstance().showRoomList(i);
+										break;
+									}
+									case Command::ST:
+									{
+										ServerManager::getInstance().showRoomInfo(std::stoi(splitStrList[1]), i);
+										break;
+									}
+									case Command::PF:
+									{
+										ServerManager::getInstance().showPlayerInfo(splitStrList[1], i);
+										break;
+									}
+									case Command::TO:
+									{
+										ServerManager::getInstance().sendWhisper(splitStrList, i);
+										break;
+									}
+									case Command::O:
+									{
+										ServerManager::getInstance().createRoom(i, splitStrList[1], splitStrList[2]);
+										break;
+									}
+									case Command::J:
+									{
+										ServerManager::getInstance().joinRoom(std::stoi(splitStrList[1]), i);
+										break;
+									}
+									case Command::X:
+									{
+										ServerManager::getInstance().quitPlayer(i);
+										break;
+									}
+									}
 								}
-
-								// donghyun : 명령어 실행
-								switch (command)
-								{
-								case Command::LOGIN:
-								{
-									// donghyun : ip, 포트 등의 sockaddr_in 정보, 닉네임
-									//ServerManager::getInstance().login(clntfd, splitStrList[1]);
-									// donghyun : make player struct
-									char clntIP[20] = { 0 };
-									inet_ntop(AF_INET, &clntAdr.sin_addr,
-										clntIP, sizeof(clntIP)), ntohs(clntAdr.sin_port);
-									int hClntSockFd = static_cast<unsigned long>(hClntSock);
-
-									
-
-									//Player player(clntIP, ntohs(clntAdr.sin_port), hClntSockFd, i, splitStrList[1]);
-									Player player(clntIP, ntohs(clntAdr.sin_port), hClntSockFd, i, splitStrList[1]);
-								
-
-									ServerManager::getInstance().login(player);
-
-								}
-								case Command::H:
-								{
-									ServerManager::getInstance().showHelp(i);
-									break;
-								}
-								case Command::US:
-								{
-									ServerManager::getInstance().showPlayerList(i);
-									break;
-								}
-								case Command::LT:
-								{
-
-								}
-								case Command::ST:
-								{
-
-								}
-								case Command::PF:
-								{
-
-								}
-								case Command::TO:
-								{
-
-								}
-								case Command::O:
-								{
-									ServerManager::getInstance().createRoom(i, splitStrList[1], splitStrList[2]);
-									break;
-								}
-								case Command::J:
-								{
-
-								}
-								case Command::X:
-								{
-
-								}
-								}
+								//break;
 							}
 							totalStrLen = 0;
-							break;
 						}
 					}
 				}
