@@ -19,8 +19,6 @@ void NetworkManager::init(int in_argc, char* in_argv[])
 	argv = in_argv;
 }
 
-
-
 void NetworkManager::execute()
 {
 	if (argc != 2)
@@ -81,34 +79,34 @@ void NetworkManager::execute()
 					adrSize = sizeof(clntAdr);
 					hClntSock = accept(hServsock, (SOCKADDR*)&clntAdr, &adrSize);
 
-					sendMsg(i, "접속되었습니다.\n\r");
-
 					FD_SET(hClntSock, &reads);
-					printf("connected client : %lu\n", static_cast<unsigned long>(hClntSock));
+
 					char clntIP[20] = { 0 };
+					inet_ntop(AF_INET, &clntAdr.sin_addr,
+						clntIP, sizeof(clntIP)), ntohs(clntAdr.sin_port);
+					Player player(clntIP, ntohs(clntAdr.sin_port), hClntSock, "");
+
+					if (!ServerManager::getInstance().addPlayer(player))
+					{
+						NetworkManager::getInstance().sendMsg(reads.fd_array[i], "초기 접속 실패! 플레이어 fd 겹침.\n\r");
+					}
+
+					printf("connected client : %lu\n", static_cast<unsigned long>(hClntSock));
 					printf("client ip : %s, client port : %d\n", inet_ntop(AF_INET, &clntAdr.sin_addr, 
 						clntIP, sizeof(clntIP)), ntohs(clntAdr.sin_port));
-					/*std::string ipport = clntIP;
-					iport += ":";
-					ipport += ntohs(clnptAdr.sin_port);
-					std::cout << "client ip-port : " << ipport << '\n';*/
-					/*int hClntSockFd = static_cast<unsigned long>(hClntSock);
-					std::cout << "clntip : " << clntIP << '\n';
-					Player player(clntIP, ntohs(clntAdr.sin_port), hClntSockFd, i);
-					ServerManager::getInstance().addPlayerUsingFd(player);*/
+
+					sendMsg(hClntSock, "접속되었습니다. login [닉네임] 형태로 로그인 바랍니다.\n\r");
 				}
 				// donghyun : 이미 연결된 클라 소켓에게서 데이터를 받는 경우
 				else
 				{
 					strLen = recv(reads.fd_array[i], buf + totalStrLen, BUF_SIZE - 1, 0);
 					totalStrLen += strLen;
-					//printf("receive message : %s\n", buf);
+
 					if (strLen == 0)
 					{
-						FD_CLR(reads.fd_array[i], &reads);
 						ServerManager::getInstance().quitPlayer(i);
 						closesocket(cpyReads.fd_array[i]);
-						printf("closed client : %lu\n", static_cast<unsigned long>(cpyReads.fd_array[i]));
 					}
 					else
 					{
@@ -116,13 +114,13 @@ void NetworkManager::execute()
 						{
 							buf[totalStrLen] = 0;
 
-							std::string serverMsg = "message from server : ";
 							std::string echoMsg = buf;
 							echoMsg = echoMsg.substr(0, totalStrLen);
+							std::string serverMsg = "message from server : ";
 							std::string Msg = serverMsg + echoMsg;
 
 							// 에코용 방송
-							sendMsg(i, Msg);
+							//sendMsg(reads.fd_array[i], Msg);
 
 							std::string printMsg = "received message from client : " + echoMsg;
 							printf("%s", printMsg.c_str());
@@ -131,10 +129,11 @@ void NetworkManager::execute()
 
 							// donghyun : 채팅방에 있는지 검사
 							// donghyun : 현재 채팅 모드일 경우 파싱 필요 X
-							int roomNum = ServerManager::getInstance().getChatRoomNum(i);
+							int roomNum = ServerManager::getInstance().getChatRoomNum(reads.fd_array[i]);
 							if (roomNum >= 0)
 							{
-								ServerManager::getInstance().broadCastChatInRoom(i, roomNum, parsingMsg);
+								ServerManager::getInstance().broadCastChatInRoom(reads.fd_array[i], 
+									roomNum, parsingMsg);
 							}
 							else
 							{
@@ -149,7 +148,7 @@ void NetworkManager::execute()
 
 								if (splitStrList.size() == 0 || commandSet.find(splitStrList[0]) == commandSet.end())
 								{
-									sendMsg(i, "정확한 명령어 형식으로 입력해주세요.\n\r");
+									sendMsg(reads.fd_array[i], "정확한 명령어 형식으로 입력해주세요.\n\r");
 								}
 								else
 								{
@@ -172,70 +171,69 @@ void NetworkManager::execute()
 										setIdx++;
 									}
 
-									// donghyun : 명령어 실행
-									switch (command)
+									// donghyun : 로그인 안하고 딴거하려는 경우를 방지
+									Player* playerPtr = ServerManager::getInstance().findPlayerUsingfd(reads.fd_array[i]);
+									if (playerPtr && playerPtr->m_name == "" && command != Command::LOGIN)
 									{
-									case Command::LOGIN:
-									{
-										// donghyun : ip, 포트 등의 sockaddr_in 정보, 닉네임
-										//ServerManager::getInstance().login(clntfd, splitStrList[1]);
-										// donghyun : make player struct
-										char clntIP[20] = { 0 };
-										inet_ntop(AF_INET, &clntAdr.sin_addr,
-											clntIP, sizeof(clntIP)), ntohs(clntAdr.sin_port);
-										int hClntSockFd = static_cast<unsigned long>(hClntSock);
-
-										//Player player(clntIP, ntohs(clntAdr.sin_port), hClntSockFd, i, splitStrList[1]);
-										Player player(clntIP, ntohs(clntAdr.sin_port), hClntSockFd, i, splitStrList[1]);
-
-										ServerManager::getInstance().login(player);
-
+										sendMsg(reads.fd_array[i], 
+											"** 먼저 로그인을 진행해주세요. login [닉네임]\n\r");
 									}
-									case Command::H:
+									else
 									{
-										ServerManager::getInstance().showHelp(i);
-										break;
-									}
-									case Command::US:
-									{
-										ServerManager::getInstance().showPlayerList(i);
-										break;
-									}
-									case Command::LT:
-									{
-										ServerManager::getInstance().showRoomList(i);
-										break;
-									}
-									case Command::ST:
-									{
-										ServerManager::getInstance().showRoomInfo(std::stoi(splitStrList[1]), i);
-										break;
-									}
-									case Command::PF:
-									{
-										ServerManager::getInstance().showPlayerInfo(splitStrList[1], i);
-										break;
-									}
-									case Command::TO:
-									{
-										ServerManager::getInstance().sendWhisper(splitStrList, i);
-										break;
-									}
-									case Command::O:
-									{
-										ServerManager::getInstance().createRoom(i, splitStrList[1], splitStrList[2]);
-										break;
-									}
-									case Command::J:
-									{
-										ServerManager::getInstance().joinRoom(std::stoi(splitStrList[1]), i);
-										break;
-									}
-									case Command::X:
-									{
-										ServerManager::getInstance().quitPlayer(i);
-										break;
-									}
+										// donghyun : 명령어 실행
+										switch (command)
+										{
+										case Command::LOGIN:
+										{
+											ServerManager::getInstance().login(cpyReads.fd_array[i], splitStrList[1]);
+											break;
+										}
+										case Command::H:
+										{
+											ServerManager::getInstance().showHelp(cpyReads.fd_array[i]);
+											break;
+										}
+										case Command::US:
+										{
+											ServerManager::getInstance().showPlayerList(cpyReads.fd_array[i]);
+											break;
+										}
+										case Command::LT:
+										{
+											ServerManager::getInstance().showRoomList(cpyReads.fd_array[i]);
+											break;
+										}
+										case Command::ST:
+										{
+											ServerManager::getInstance().showRoomInfo(std::stoi(splitStrList[1]), cpyReads.fd_array[i]);
+											break;
+										}
+										case Command::PF:
+										{
+											ServerManager::getInstance().showPlayerInfo(splitStrList[1], cpyReads.fd_array[i]);
+											break;
+										}
+										case Command::TO:
+										{
+											ServerManager::getInstance().sendWhisper(splitStrList, cpyReads.fd_array[i]);
+											break;
+										}
+										case Command::O:
+										{
+											ServerManager::getInstance().createRoom(cpyReads.fd_array[i], splitStrList[1], splitStrList[2]);
+											break;
+										}
+										case Command::J:
+										{
+											ServerManager::getInstance().joinRoom(std::stoi(splitStrList[1]), cpyReads.fd_array[i]);
+											break;
+										}
+										case Command::X:
+										{
+											ServerManager::getInstance().quitPlayer(cpyReads.fd_array[i]);
+											break;
+										}
+										}
 									}
 								}
 								//break;
@@ -258,68 +256,25 @@ void NetworkManager::ErrorHandling(const char* message)
 	exit(1);
 }
 
-std::vector<std::string> NetworkManager::parse(const int clntfd, const std::string msg)
-{
-	std::stringstream sStream(msg);
-	std::vector<std::string> splitStrList;
-	std::string splitStr, Msg;
-	while (sStream >> splitStr)
-	{
-		splitStrList.push_back(splitStr);
-	}
-
-	if (splitStrList.size() == 0 || commandSet.find(splitStrList[0]) == commandSet.end())
-	{
-		Msg = "정확한 명령어 형식으로 입력해주세요.\r\n";
-	}
-	else
-	{
-		std::transform(splitStrList[0].begin(), splitStrList[0].end(), splitStrList[0].begin(), [](char const& c)
-			{
-				return std::tolower(c);
-			});
-		std::string commandStr = splitStrList[0];
-		std::cout << "commandstr : " << commandStr << '\n';
-		Command command = Command::INITIAL;
-		int setIdx = 0;
-		for (auto iter = commandSet.begin(); iter != commandSet.end(); iter++)
-		{
-			std::string iterStr = *iter;
-			if (commandStr == *iter)
-			{
-				command = static_cast<Command>(setIdx);
-				break;
-			}
-			setIdx++;
-		}
-
-		switch(command)
-		{
-		case Command::LOGIN:
-			// donghyun : ip, 포트 등의 sockaddr_in 정보, 닉네임
-			//ServerManager::getInstance().login(clntfd, splitStrList[1]);
-			Msg = std::format("로그인 되었습니다. ({})\r\n", splitStrList[1]);
-			break;
-		case Command::H:
-			ServerManager::getInstance().showHelp(clntfd);
-			break;
-		case Command::US:
-			ServerManager::getInstance().showPlayerList(clntfd);
-			break;
-		}
-	}
-	sendMsg(clntfd, Msg);
-	return splitStrList;
-}
-
 void NetworkManager::sendMsg(const std::string playerName, const std::string msg)
 {
-	unsigned long readsIdx = ServerManager::getInstance().findPlayerFd(playerName);
-	send(reads.fd_array[readsIdx], msg.c_str(), static_cast<int>(msg.size()), 0);
+	Player* playerPtr = ServerManager::getInstance().findPlayerUsingName(playerName);
+	if (playerPtr)
+	{
+		send(playerPtr->m_fd, msg.c_str(), static_cast<int>(msg.size()), 0);
+	}
 }
 
-void NetworkManager::sendMsg(const unsigned int clntFd, const std::string msg)
+void NetworkManager::closeClient(const SOCKET clntfd)
 {
-	send(reads.fd_array[clntFd], msg.c_str(), static_cast<int>(msg.size()), 0);
+	FD_CLR(clntfd, &reads);
+	printf("closed client fd: %lu\n", static_cast<unsigned long>(clntfd));
+	closesocket(clntfd);
+}
+
+// donghyun : 파일 디스크럽터로 send
+void NetworkManager::sendMsg(const SOCKET clntFd, const std::string msg)
+{
+	send(clntFd, msg.c_str(), static_cast<int>(msg.size()), 0);
 }
 

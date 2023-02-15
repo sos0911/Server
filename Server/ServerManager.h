@@ -14,7 +14,7 @@ private:
 	~ServerManager() {}
 
 	// donghyun : key는 name이다.
-	std::map<std::string, Player> playerList;
+	std::map<SOCKET, Player> playerList;
 	// donghyun : key는 방 번호이다.
 	std::map<int, Room> roomList;
 	int lastRoomNum = 1;
@@ -24,29 +24,30 @@ public:
 	// donghyun : 싱글톤 구현
 	static ServerManager& getInstance();
 
-	void init();
-	void login(Player& player);
-	void showHelp(const int clntfd);
-	void createRoom(const int clntfdIdx, std::string maxCntStr, std::string roomName);
+	void login(SOCKET clntfd, std::string& playerName);
+	void showHelp(const SOCKET clntfd);
+	void createRoom(const SOCKET clntfd, std::string maxCntStr, std::string roomName);
 	// donghyun (0213) : 이건 대기실에 있을 때만 방 폭파하게 해야 할듯
 	void deleteRoom();
-	void sendWhisper(std::vector<std::string>& splitStrList, const int clntfd);
-	void showRoomInfo(int roomNum, const int clntfd);
-	void showRoomList(const int clntfd);
-	void showPlayerInfo(std::string playerName, const int clntfd);
-	void showPlayerList(const int clntfd);
+	void sendWhisper(std::vector<std::string>& splitStrList, const SOCKET clntfd);
+	void showRoomInfo(int roomNum, const SOCKET clntfd);
+	void showRoomList(const SOCKET clntfd);
+	void showPlayerInfo(std::string playerName, const SOCKET clntfd);
+	void showPlayerList(const SOCKET clntfd);
 
-	void joinRoom(const int roomNum, const int clntfd);
+	void joinRoom(const int roomNum, const SOCKET clntfd);
 
 	int getLastRoomNum() { return lastRoomNum++; }
 
-	int getChatRoomNum(u_int clntfdIdx);
-	void broadCastChatInRoom(u_int clntfdIdx, int roomNum, std::string& msg);
+	int getChatRoomNum(SOCKET clntfd);
+	void broadCastChatInRoom(SOCKET clntfd, int roomNum, std::string& msg);
 	void broadCastInRoom(int roomNum, std::string& msg);
-	void quitPlayer(const int clntfdIdx);
+	void quitPlayer(const SOCKET clntfd);
 	void quitRoom(const int roomNum, Player* playerPtr);
-	int addPlayer(Player& player);
-	const unsigned int findPlayerFd(const std::string playerName);
+	bool addPlayer(Player& player);
+	Player* findPlayerUsingfd(const SOCKET clntfd);
+	Player* findPlayerUsingName(const std::string& playerName);
+
 
 	std::string getCurTime();
 };

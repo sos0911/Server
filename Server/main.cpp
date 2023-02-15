@@ -17,7 +17,6 @@ int main(int argc, char* argv[])
 	networkManager.init(argc, argv);
 
 	ServerManager& serverManager = ServerManager::getInstance();
-	serverManager.init();
 
 	networkManager.execute();
 	return 0;

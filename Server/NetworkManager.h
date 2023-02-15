@@ -43,9 +43,9 @@ public:
 	void init(int argc, char* argv[]);
 	void execute();
 	void ErrorHandling(const char* message);
-	std::vector<std::string> parse(const int clntfd, const std::string msg);
 	void sendMsg(const std::string playerName, const std::string msg);
-	void sendMsg(const unsigned int clntFd, const std::string msg);
+	void sendMsg(const SOCKET clntFd, const std::string msg);
+	void closeClient(const SOCKET clntfd);
 };
 
 enum class Command
