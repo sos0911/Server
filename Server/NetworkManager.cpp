@@ -100,6 +100,13 @@ void NetworkManager::execute()
 				// donghyun : 이미 연결된 클라 소켓에게서 데이터를 받는 경우
 				else
 				{
+					Player* playerPtr = ServerManager::getInstance().findPlayerUsingfd(reads.fd_array[i]);
+					if (nullptr == playerPtr)
+					{
+						continue;
+					}
+					char* buf = playerPtr->m_buf;
+					int& totalStrLen = playerPtr->m_totalStrLen;
 					strLen = recv(reads.fd_array[i], buf + totalStrLen, BUF_SIZE - 1, 0);
 					totalStrLen += strLen;
 
@@ -108,138 +115,173 @@ void NetworkManager::execute()
 						ServerManager::getInstance().quitPlayer(i);
 						closesocket(cpyReads.fd_array[i]);
 					}
-					else
+					else if(buf[totalStrLen - 1] == '\n')
 					{
-						if (buf[totalStrLen - 1] == '\n')
+						buf[totalStrLen] = 0;
+
+						std::string echoMsg = buf;
+						echoMsg = echoMsg.substr(0, totalStrLen);
+						std::string serverMsg = "message from server : ";
+						std::string Msg = serverMsg + echoMsg;
+
+						// 에코용 방송
+						//sendMsg(reads.fd_array[i], Msg);
+
+						std::string printMsg = "received message from client : " + echoMsg;
+						printf("%s", printMsg.c_str());
+
+						std::string parsingMsg = echoMsg.substr(0, totalStrLen - 2);
+
+						// donghyun : 채팅방에 있는지 검사
+						// donghyun : 현재 채팅 모드일 경우 파싱 필요 X
+						int roomNum = ServerManager::getInstance().getChatRoomNum(reads.fd_array[i]);
+						if (roomNum >= 0)
 						{
-							buf[totalStrLen] = 0;
-
-							std::string echoMsg = buf;
-							echoMsg = echoMsg.substr(0, totalStrLen);
-							std::string serverMsg = "message from server : ";
-							std::string Msg = serverMsg + echoMsg;
-
-							// 에코용 방송
-							//sendMsg(reads.fd_array[i], Msg);
-
-							std::string printMsg = "received message from client : " + echoMsg;
-							printf("%s", printMsg.c_str());
-
-							std::string parsingMsg = echoMsg.substr(0, totalStrLen - 2);
-
-							// donghyun : 채팅방에 있는지 검사
-							// donghyun : 현재 채팅 모드일 경우 파싱 필요 X
-							int roomNum = ServerManager::getInstance().getChatRoomNum(reads.fd_array[i]);
-							if (roomNum >= 0)
+							ServerManager::getInstance().broadCastChatInRoom(reads.fd_array[i], 
+								roomNum, parsingMsg);
+						}
+						else
+						{
+							// donghyun : parsing
+							std::stringstream sStream(parsingMsg);
+							std::vector<std::string> splitStrList;
+							std::string splitStr;
+							while (sStream >> splitStr)
 							{
-								ServerManager::getInstance().broadCastChatInRoom(reads.fd_array[i], 
-									roomNum, parsingMsg);
+								splitStrList.push_back(splitStr);
+							}
+
+							if (splitStrList.size() == 0 || commandMap.find(splitStrList[0]) == commandMap.end())
+							{
+								sendMsg(reads.fd_array[i], "정확한 명령어 형식으로 입력해주세요.\n\r");
 							}
 							else
 							{
-								// donghyun : parsing
-								std::stringstream sStream(parsingMsg);
-								std::vector<std::string> splitStrList;
-								std::string splitStr;
-								while (sStream >> splitStr)
-								{
-									splitStrList.push_back(splitStr);
-								}
+								std::transform(splitStrList[0].begin(), splitStrList[0].end(), splitStrList[0].begin(), [](char const& c)
+									{
+										return std::tolower(c);
+									});
+								std::string commandStr = splitStrList[0];
+								std::cout << "commandstr : " << commandStr << '\n';
+								Command command = commandMap[commandStr];
 
-								if (splitStrList.size() == 0 || commandSet.find(splitStrList[0]) == commandSet.end())
+								// donghyun : 로그인 안하고 딴거하려는 경우를 방지
+								Player* playerPtr = ServerManager::getInstance().findPlayerUsingfd(reads.fd_array[i]);
+								if (playerPtr && playerPtr->m_name == "" && command != Command::LOGIN)
 								{
-									sendMsg(reads.fd_array[i], "정확한 명령어 형식으로 입력해주세요.\n\r");
+									sendMsg(reads.fd_array[i], 
+										"** 먼저 로그인을 진행해주세요. login [닉네임]\n\r");
 								}
 								else
 								{
-									std::transform(splitStrList[0].begin(), splitStrList[0].end(), splitStrList[0].begin(), [](char const& c)
-										{
-											return std::tolower(c);
-										});
-									std::string commandStr = splitStrList[0];
-									std::cout << "commandstr : " << commandStr << '\n';
-									Command command = Command::INITIAL;
-									int setIdx = 0;
-									for (auto iter = commandSet.begin(); iter != commandSet.end(); iter++)
+									// donghyun : 명령어 실행
+									switch (command)
 									{
-										std::string iterStr = *iter;
-										if (commandStr == *iter)
+									case Command::LOGIN:
+									{
+										if (splitStrList.size() != static_cast<u_int>(2))
 										{
-											command = static_cast<Command>(setIdx);
+											sendMsg(reads.fd_array[i], "명령어 인자를 정확히 입력해주세요.\n\r");
 											break;
 										}
-										setIdx++;
+										ServerManager::getInstance().login(cpyReads.fd_array[i], splitStrList[1]);
+										break;
 									}
-
-									// donghyun : 로그인 안하고 딴거하려는 경우를 방지
-									Player* playerPtr = ServerManager::getInstance().findPlayerUsingfd(reads.fd_array[i]);
-									if (playerPtr && playerPtr->m_name == "" && command != Command::LOGIN)
+									case Command::H:
 									{
-										sendMsg(reads.fd_array[i], 
-											"** 먼저 로그인을 진행해주세요. login [닉네임]\n\r");
+										if (splitStrList.size() != static_cast<u_int>(1))
+										{
+											sendMsg(reads.fd_array[i], "명령어 인자를 정확히 입력해주세요.\n\r");
+											break;
+										}
+										ServerManager::getInstance().showHelp(cpyReads.fd_array[i]);
+										break;
 									}
-									else
+									case Command::US:
 									{
-										// donghyun : 명령어 실행
-										switch (command)
+										if (splitStrList.size() != static_cast<u_int>(1))
 										{
-										case Command::LOGIN:
-										{
-											ServerManager::getInstance().login(cpyReads.fd_array[i], splitStrList[1]);
+											sendMsg(reads.fd_array[i], "명령어 인자를 정확히 입력해주세요.\n\r");
 											break;
 										}
-										case Command::H:
+										ServerManager::getInstance().showPlayerList(cpyReads.fd_array[i]);
+										break;
+									}
+									case Command::LT:
+									{
+										if (splitStrList.size() != static_cast<u_int>(1))
 										{
-											ServerManager::getInstance().showHelp(cpyReads.fd_array[i]);
+											sendMsg(reads.fd_array[i], "명령어 인자를 정확히 입력해주세요.\n\r");
 											break;
 										}
-										case Command::US:
+										ServerManager::getInstance().showRoomList(cpyReads.fd_array[i]);
+										break;
+									}
+									case Command::ST:
+									{
+										if (splitStrList.size() != static_cast<u_int>(2))
 										{
-											ServerManager::getInstance().showPlayerList(cpyReads.fd_array[i]);
+											sendMsg(reads.fd_array[i], "명령어 인자를 정확히 입력해주세요.\n\r");
 											break;
 										}
-										case Command::LT:
+										ServerManager::getInstance().showRoomInfo(std::stoi(splitStrList[1]), cpyReads.fd_array[i]);
+										break;
+									}
+									case Command::PF:
+									{
+										if (splitStrList.size() != static_cast<u_int>(2))
 										{
-											ServerManager::getInstance().showRoomList(cpyReads.fd_array[i]);
+											sendMsg(reads.fd_array[i], "명령어 인자를 정확히 입력해주세요.\n\r");
 											break;
 										}
-										case Command::ST:
+										ServerManager::getInstance().showPlayerInfo(splitStrList[1], cpyReads.fd_array[i]);
+										break;
+									}
+									case Command::TO:
+									{
+										if (splitStrList.size() != static_cast<u_int>(3))
 										{
-											ServerManager::getInstance().showRoomInfo(std::stoi(splitStrList[1]), cpyReads.fd_array[i]);
+											sendMsg(reads.fd_array[i], "명령어 인자를 정확히 입력해주세요.\n\r");
 											break;
 										}
-										case Command::PF:
+										ServerManager::getInstance().sendWhisper(splitStrList, cpyReads.fd_array[i]);
+										break;
+									}
+									case Command::O:
+									{
+										if (splitStrList.size() != static_cast<u_int>(3))
 										{
-											ServerManager::getInstance().showPlayerInfo(splitStrList[1], cpyReads.fd_array[i]);
+											sendMsg(reads.fd_array[i], "명령어 인자를 정확히 입력해주세요.\n\r");
 											break;
 										}
-										case Command::TO:
+										ServerManager::getInstance().createRoom(cpyReads.fd_array[i], splitStrList[1], splitStrList[2]);
+										break;
+									}
+									case Command::J:
+									{
+										if (splitStrList.size() != static_cast<u_int>(2))
 										{
-											ServerManager::getInstance().sendWhisper(splitStrList, cpyReads.fd_array[i]);
+											sendMsg(reads.fd_array[i], "명령어 인자를 정확히 입력해주세요.\n\r");
 											break;
 										}
-										case Command::O:
+										ServerManager::getInstance().joinRoom(std::stoi(splitStrList[1]), cpyReads.fd_array[i]);
+										break;
+									}
+									case Command::X:
+									{
+										if (splitStrList.size() != static_cast<u_int>(1))
 										{
-											ServerManager::getInstance().createRoom(cpyReads.fd_array[i], splitStrList[1], splitStrList[2]);
+											sendMsg(reads.fd_array[i], "명령어 인자를 정확히 입력해주세요.\n\r");
 											break;
 										}
-										case Command::J:
-										{
-											ServerManager::getInstance().joinRoom(std::stoi(splitStrList[1]), cpyReads.fd_array[i]);
-											break;
-										}
-										case Command::X:
-										{
-											ServerManager::getInstance().quitPlayer(cpyReads.fd_array[i]);
-											break;
-										}
-										}
+										ServerManager::getInstance().quitPlayer(cpyReads.fd_array[i]);
+										break;
+									}
 									}
 								}
-								//break;
 							}
-							totalStrLen = 0;
 						}
+						totalStrLen = 0;
 					}
 				}
 			}

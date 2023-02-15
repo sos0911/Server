@@ -85,6 +85,12 @@ void ServerManager::sendWhisper(std::vector<std::string>& splitStrList, const SO
 	Player* sendPlayerPtr = findPlayerUsingName(splitStrList[1]);
 	if (sendPlayerPtr)
 	{
+		if (clntfd == sendPlayerPtr->m_fd)
+		{
+			NetworkManager::getInstance().sendMsg(clntfd, "** 자기 자신에게는 보낼 수 없습니다.\n\r");
+			return;
+		}
+
 		Player& player = playerList[clntfd];
 		//# aaa님의 쪽지 ==> 띄어쓰기 됨?
 		msg += std::format("# {}님의 쪽지 ==> ", player.m_name);
@@ -222,6 +228,14 @@ void ServerManager::joinRoom(const int roomNum, const SOCKET clntfd)
 		if (playerPtr)
 		{
 			Room& room = roomList[roomNum];
+			// donghyun : 만약 최대 인원보다 많아진다면 인원 초과로 입장 불가
+			if (room.curPartCnt + 1 > room.maxPartCnt)
+			{
+				msg += std::format("**방 인원 초과로 입장이 불가능합니다. (현재인원 {} / {})\n\r", 
+					room.curPartCnt, room.maxPartCnt);
+				NetworkManager::getInstance().sendMsg(clntfd, msg);
+				return;
+			}
 			// donghyun : room에 자기 자신 추가 (현실 시간도)
 			room.roomPartInfo[playerPtr->m_name] = { playerPtr, ServerManager::getInstance().getCurTime() };
 			room.curPartCnt++;
@@ -258,11 +272,31 @@ void ServerManager::broadCastChatInRoom(SOCKET clntfd, int roomNum, std::string&
 		broadMsg += playerPtr->m_name + " > ";
 		broadMsg += msg + "\n\r";
 
+		// donghyun : 만약 개인이 채팅치던 게 있으면, 그대로 클라단에 나오게 한다.
 		for (auto iter = room.roomPartInfo.begin(); iter != room.roomPartInfo.end(); iter++)
 		{
-			// donghyun : 자기 자신도 브로드캐스팅함
-			auto& playerInfo = iter->second;
-			NetworkManager::getInstance().sendMsg(playerInfo.first->m_fd, broadMsg);
+			Player* playerPtr = iter->second.first;
+			if (playerPtr)
+			{
+				std::string subMsg = playerPtr->m_buf;
+				if (playerPtr->m_fd != clntfd)
+				{
+					if (playerPtr->m_totalStrLen != 0)
+					{
+						NetworkManager::getInstance().sendMsg(playerPtr->m_fd, "\n\r");
+						NetworkManager::getInstance().sendMsg(playerPtr->m_fd, broadMsg);
+						NetworkManager::getInstance().sendMsg(playerPtr->m_fd, subMsg.substr(0, playerPtr->m_totalStrLen));
+					}
+					else
+					{
+						NetworkManager::getInstance().sendMsg(playerPtr->m_fd, broadMsg);
+					}
+				}
+				else
+				{
+					NetworkManager::getInstance().sendMsg(playerPtr->m_fd, broadMsg);
+				}
+			}
 		}
 	}
 }

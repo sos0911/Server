@@ -12,6 +12,21 @@
 #define BUF_SIZE 1024
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
 
+enum class Command
+{
+	H,
+	J,
+	LOGIN,
+	LT,
+	O,
+	PF,
+	ST,
+	TO,
+	US,
+	X,
+	INITIAL
+};
+
 class NetworkManager
 {
 private:
@@ -26,11 +41,17 @@ private:
 	NetworkManager& operator=(const NetworkManager& ref) {}
 	~NetworkManager() {}
 
-	std::set<std::string> commandSet = { "h", "j", "login", "lt", "o", "pf", "st", "to", "us", "x"};
+	std::map<std::string, Command> commandMap =
+	{ {"h", Command::H}, {"j", Command::J},
+	  {"login", Command::LOGIN}, {"lt", Command::LT},
+	  {"o", Command::O}, {"pf", Command::PF},
+	  {"st", Command::ST}, {"to", Command::TO},
+	  {"us", Command::US}, {"x", Command::X} };
 
 	int adrSize;
-	int totalStrLen = 0, strLen = 0, fdNum;
-	char buf[BUF_SIZE];
+	int strLen = 0, fdNum;
+	//int totalStrLen = 0;
+	//char buf[BUF_SIZE];
 	
 	int argc;
 	char** argv;
@@ -46,19 +67,4 @@ public:
 	void sendMsg(const std::string playerName, const std::string msg);
 	void sendMsg(const SOCKET clntFd, const std::string msg);
 	void closeClient(const SOCKET clntfd);
-};
-
-enum class Command
-{
-	H,
-	J, 
-	LOGIN,
-	LT,
-	O, 
-	PF,
-	ST,
-	TO,
-	US,
-	X, 
-	INITIAL
 };
