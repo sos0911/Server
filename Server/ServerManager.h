@@ -4,14 +4,16 @@
 #include <map>
 #include <WinSock2.h>
 #include "NetworkManager.h"
+#include "Singleton.h"
 
-class ServerManager
+class ServerManager : public Singleton<ServerManager>
 {
 private:
+	friend class Singleton;
 	ServerManager();
 	ServerManager(const ServerManager& ref) = delete;
 	ServerManager& operator=(const ServerManager& ref) = delete;
-	~ServerManager() {}
+	virtual ~ServerManager() {}
 
 	// donghyun : key´Â nameÀÌ´Ù.
 	std::map<SOCKET, Player> playerList;
@@ -21,8 +23,11 @@ private:
 
 public:
 
-	// donghyun : ½Ì±ÛÅæ ±¸Çö
-	static ServerManager& getInstance();
+	//// donghyun : ½Ì±ÛÅæ ±¸Çö
+	//static ServerManager& getInstance();
+
+	//ServerManager();
+	//virtual ~ServerManager() {}
 
 	void login(SOCKET clntfd, std::string& playerName);
 	void showHelp(const SOCKET clntfd);

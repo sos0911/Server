@@ -5,9 +5,11 @@
 #include <cstdlib>
 #include <WinSock2.h>
 #include <string>
-#include "ServerManager.h"
 #include <set>
 #include <map>
+#include "ServerManager.h"
+#include "Singleton.h"
+
 
 #define BUF_SIZE 1024
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
@@ -41,18 +43,20 @@ enum class ChatCommand
 	INITIAL
 };
 
-class NetworkManager
+class NetworkManager : public Singleton<NetworkManager>
 {
 private:
+	friend class Singleton;
+
 	SOCKET hServsock, hClntSock;
 	SOCKADDR_IN servAdr, clntAdr;
 	timeval timeout;
 	fd_set reads;
 
-	NetworkManager();
 	NetworkManager(const NetworkManager& ref) = delete;
 	NetworkManager& operator=(const NetworkManager& ref) = delete;
-	~NetworkManager() {}
+	NetworkManager();
+	virtual ~NetworkManager() {}
 
 	std::map<std::string, Command> commandMap =
 	{ {"h", Command::H}, {"j", Command::J},
@@ -76,8 +80,11 @@ private:
 
 public:
 
-	// donghyun : 教臂沛 备泅
-	static NetworkManager& getInstance();
+	//// donghyun : 教臂沛 备泅
+	//static NetworkManager& getInstance();
+
+	//NetworkManager();
+	//virtual ~NetworkManager() {}
 
 	void init(int argc, char* argv[]);
 	void execute();

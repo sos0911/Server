@@ -23,4 +23,5 @@ typedef struct Player
 	Player(SOCKET clntFd);
 	Player();
 	Player(const Player& player);
+	std::string getInfoStr();
 }Player;

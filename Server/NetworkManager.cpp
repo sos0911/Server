@@ -6,13 +6,6 @@
 #include <format>
 #include <WS2tcpip.h>
 
-
-NetworkManager& NetworkManager::getInstance()
-{
-	static NetworkManager instance;
-	return instance;
-}
-
 NetworkManager::NetworkManager()
 {
 	hServsock = 0;
@@ -103,6 +96,7 @@ void NetworkManager::execute()
 				if (!ServerManager::getInstance().addPlayer(player))
 				{
 					NetworkManager::getInstance().sendMsg(reads.fd_array[i], "초기 접속 실패! 플레이어 fd 겹침.\n\r");
+					continue;
 				}
 
 				printf("connected client : %lu\n", static_cast<unsigned long>(hClntSock));

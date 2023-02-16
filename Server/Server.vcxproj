@@ -144,6 +144,7 @@
     <ClInclude Include="Room.h" />
     <ClInclude Include="ServerManager.h" />
     <ClInclude Include="NetworkManager.h" />
+    <ClInclude Include="Singleton.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

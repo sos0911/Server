@@ -7,23 +7,17 @@ ServerManager::ServerManager()
 {
 }
 
-ServerManager& ServerManager::getInstance()
-{
-	static ServerManager instance;
-	return instance;
-}
-
 void ServerManager::login(SOCKET clntfd, std::string& playerName)
 {
 	// donghyun : 이름 중복 검사
 	if (nullptr == findPlayerUsingName(playerName))
 	{
-		Player* player = findPlayerUsingfd(clntfd);
-		if (player)
+		Player* playerPtr = findPlayerUsingfd(clntfd);
+		if (playerPtr)
 		{
-			player->m_name = playerName;
+			playerPtr->m_name = playerName;
 			NetworkManager::getInstance().sendMsg(clntfd,
-				std::format("** 로그인 하였습니다. {}\n\r", player->m_name));
+				std::format("** 로그인 하였습니다. {}\n\r", playerPtr->m_name));
 			showHelp(clntfd);
 		}
 	}
@@ -205,8 +199,9 @@ void ServerManager::showPlayerList(const SOCKET clntfd)
 	for(auto iter = playerList.begin(); iter != playerList.end(); ++iter)
 	{
 		auto player = iter->second;
-		std::string playerInfo = std::format("이용자: {}              접속지 : {} : {}\n\r", player.m_name, player.m_ip, player.m_port);
-		msg += playerInfo;
+		/*std::string playerInfo = std::format("이용자: {}              접속지 : {} : {}\n\r", player.m_name, player.m_ip, player.m_port);
+		msg += playerInfo;*/
+		msg += player.getInfoStr() + "\n\r";
 	}
 	msg += "---------------------------------------------------------------\n\r";
 
@@ -230,7 +225,7 @@ void ServerManager::joinRoom(const int roomNum, const SOCKET clntfd)
 		{
 			Room& room = roomList[roomNum];
 			// donghyun : 만약 최대 인원보다 많아진다면 인원 초과로 입장 불가
-			if (room.curPartCnt + 1 > room.maxPartCnt)
+			if (room.curPartCnt >= room.maxPartCnt)
 			{
 				msg = std::format("** 방 인원 초과로 입장이 불가능합니다. (현재인원 {} / {})\n\r", 
 					room.curPartCnt, room.maxPartCnt);
@@ -352,15 +347,7 @@ void ServerManager::quitRoom(const int roomNum, Player* playerPtr)
 // donghyun : 첫 클라 소켓 연결 요청 시에 사용됨
 bool ServerManager::addPlayer(Player& player)
 {
-	if (playerList.find(player.m_fd) == playerList.end())
-	{
-		playerList[player.m_fd] = player;
-		return true;
-	}
-	else
-	{
-		return false;
-	}
+	return playerList.insert({ player.m_fd, player }).second;
 }
 
 // donghyun : 만약 못찾았을 때는 nullptr 반환
