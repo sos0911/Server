@@ -10,7 +10,7 @@ Room::Room()
 	roomNum = -1;
 }
 
-Room::Room(std::string in_roomName, int in_maxPartCnt, Player& in_player)
+Room::Room(std::string& in_roomName, int in_maxPartCnt, Player& in_player)
 {
 	// donghyun : 현재 시간 캐싱
 	std::string time_str = ServerManager::getInstance().getCurTime();

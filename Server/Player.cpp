@@ -4,11 +4,9 @@
 #include <iostream>
 
 
-Player::Player(char ip[], u_short port, unsigned long fd, std::string name) :
+Player::Player(char ip[], u_short port, SOCKET fd, std::string name) :
 	m_ip(ip), m_port(port), m_fd(fd), m_name(name)
 {
-	std::cout << "m_ip : " << m_ip << '\n';
-	//std::copy(ip, ip + IP_SIZE, m_ip);
 }
 
 Player::Player(SOCKET clntFd) : 

@@ -9,8 +9,8 @@ class ServerManager
 {
 private:
 	ServerManager();
-	ServerManager(const ServerManager& ref) {}
-	ServerManager& operator=(const ServerManager& ref) {}
+	ServerManager(const ServerManager& ref) = delete;
+	ServerManager& operator=(const ServerManager& ref) = delete;
 	~ServerManager() {}
 
 	// donghyun : key는 name이다.
@@ -26,18 +26,17 @@ public:
 
 	void login(SOCKET clntfd, std::string& playerName);
 	void showHelp(const SOCKET clntfd);
-	void createRoom(const SOCKET clntfd, std::string maxCntStr, std::string roomName);
-	// donghyun (0213) : 이건 대기실에 있을 때만 방 폭파하게 해야 할듯
-	void deleteRoom();
+	void showChatHelp(const SOCKET clntfd);
+	void createRoom(const SOCKET clntfd, std::string& maxCntStr, std::string& roomName);
 	void sendWhisper(std::vector<std::string>& splitStrList, const SOCKET clntfd);
 	void showRoomInfo(int roomNum, const SOCKET clntfd);
 	void showRoomList(const SOCKET clntfd);
-	void showPlayerInfo(std::string playerName, const SOCKET clntfd);
+	void showPlayerInfo(std::string& playerName, const SOCKET clntfd);
 	void showPlayerList(const SOCKET clntfd);
 
 	void joinRoom(const int roomNum, const SOCKET clntfd);
 
-	int getLastRoomNum() { return lastRoomNum++; }
+	int getLastRoomNum() { return ++lastRoomNum; }
 
 	int getChatRoomNum(SOCKET clntfd);
 	void broadCastChatInRoom(SOCKET clntfd, int roomNum, std::string& msg);
@@ -51,10 +50,3 @@ public:
 
 	std::string getCurTime();
 };
-
-//enum class playerStatus
-//{
-//	SOCKET,
-//	LOGIN,
-//	CHATTING
-//};

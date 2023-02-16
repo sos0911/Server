@@ -19,7 +19,7 @@ typedef struct Player
 	char m_buf[BUF_SIZE] = { 0 };
 
 	//donghyun : 맨 처음 클라 소켓 연결 요청 시 이름이 없을 때 사용하는 생성자
-	Player(char ip[], u_short port, unsigned long fd, std::string name);
+	Player(char ip[], u_short port, SOCKET fd, std::string name);
 	Player(SOCKET clntFd);
 	Player();
 	Player(const Player& player);

@@ -22,10 +22,10 @@ void ServerManager::login(SOCKET clntfd, std::string& playerName)
 		if (player)
 		{
 			player->m_name = playerName;
+			NetworkManager::getInstance().sendMsg(clntfd,
+				std::format("** 로그인 하였습니다. {}\n\r", player->m_name));
+			showHelp(clntfd);
 		}
-		NetworkManager::getInstance().sendMsg(clntfd,
-			std::format("** 로그인 하였습니다. {}\n\r", player->m_name));
-		showHelp(clntfd);
 	}
 	else
 	{
@@ -39,23 +39,40 @@ void ServerManager::showHelp(const SOCKET clntfd)
 {
 	std::string msg = "";
 	msg.reserve(100);
-	msg += "-------------------------------------------------------------- -\n\r";
-	msg += "H                         명령어 안내\n\r";
-	msg += "US                        이용자 목록 보기\n\r";
-	msg += "LT                        대화방 목록 보기\n\r";
-	msg += "ST[방번호]                대화방 정보 보기\n\r";
-	msg += "PF[상대방ID]              이용자 정보 보기\n\r";
-	msg += "TO[상대방ID][메시지]      쪽지 보내기\n\r";
-	msg += "O[최대인원][방제목]       대화방 만들기\n\r";
-	msg += "J[방번호]                 대화방 참여하기\n\r";
-	msg += "X                         끝내기\n\r";
-	msg += "-------------------------------------------------------------- -\n\r";
+	msg = "-------------------------------------------------------------- -\n\r\
+H                         명령어 안내\n\r\
+US                        이용자 목록 보기\n\r\
+LT                        대화방 목록 보기\n\r\
+ST [방번호]               대화방 정보 보기\n\r\
+PF [상대방ID]             이용자 정보 보기\n\r\
+TO [상대방ID] [메시지]    쪽지 보내기\n\r\
+O  [최대인원] [방제목]    대화방 만들기\n\r\
+J  [방번호]               대화방 참여하기\n\r\
+X                         끝내기\n\r\
+-------------------------------------------------------------- -\n\r";
 
 	NetworkManager::getInstance().sendMsg(clntfd, msg);
 }
 
+void ServerManager::showChatHelp(const SOCKET clntfd)
+{
+	std::string msg = "";
+	msg.reserve(100);
+	msg = "-------------------------------------------------------------- -\n\r\
+/H                         명령어 안내\n\r\
+/US                        이용자 목록 보기\n\r\
+/LT                        대화방 목록 보기\n\r\
+/ST [방번호]               대화방 정보 보기\n\r\
+/PF [상대방ID]             이용자 정보 보기\n\r\
+/TO [상대방ID] [메시지]    쪽지 보내기\n\r\
+/Q                         대화방 나가기\n\r\
+/X                         끝내기\n\r\
+-------------------------------------------------------------- -\n\r";
 
-void ServerManager::createRoom(const SOCKET clntfd, std::string maxCntStr, std::string roomName)
+	NetworkManager::getInstance().sendMsg(clntfd, msg);
+}
+
+void ServerManager::createRoom(const SOCKET clntfd, std::string& maxCntStr, std::string& roomName)
 {
 	Player* playerPtr = findPlayerUsingfd(clntfd);
 	if (playerPtr)
@@ -65,16 +82,9 @@ void ServerManager::createRoom(const SOCKET clntfd, std::string maxCntStr, std::
 		// donghyun : 방장에게도 속한 방이 있다고 표시해주기
 		playerPtr->m_roomNum = room.roomNum;
 
-		std::string msg = "";
-		msg += "** 대화방이 개설되었습니다.\n\r";
-		msg += std::format("**{}님이 들어오셨습니다. (현재인원 {} / {})\n\r", playerPtr->m_name, room.curPartCnt, room.maxPartCnt);
+		std::string msg = std::format("** 대화방이 개설되었습니다.\n\r** {}님이 들어오셨습니다. (현재인원 {} / {})\n\r", playerPtr->m_name, room.curPartCnt, room.maxPartCnt);
 		NetworkManager::getInstance().sendMsg(clntfd, msg);
 	}
-}
-
-void ServerManager::deleteRoom()
-{
-
 }
 
 void ServerManager::sendWhisper(std::vector<std::string>& splitStrList, const SOCKET clntfd)
@@ -92,10 +102,9 @@ void ServerManager::sendWhisper(std::vector<std::string>& splitStrList, const SO
 		}
 
 		Player& player = playerList[clntfd];
-		//# aaa님의 쪽지 ==> 띄어쓰기 됨?
-		msg += std::format("# {}님의 쪽지 ==> ", player.m_name);
+		msg = std::format("# {}님의 쪽지 ==> ", player.m_name);
 		size_t splitStrSize = splitStrList.size();
-		for (size_t i = 2; i < splitStrSize; i++)
+		for (size_t i = 2; i < splitStrSize; ++i)
 		{
 			msg += splitStrList[i] + " ";
 		}
@@ -106,7 +115,7 @@ void ServerManager::sendWhisper(std::vector<std::string>& splitStrList, const SO
 	}
 	else
 	{
-		msg += std::format("** {}님을 찾을 수 없습니다.\n\r", splitStrList[1]);
+		msg = std::format("** {}님을 찾을 수 없습니다.\n\r", splitStrList[1]);
 		NetworkManager::getInstance().sendMsg(clntfd, msg);
 	}
 }
@@ -118,20 +127,16 @@ void ServerManager::showRoomInfo(int roomNum, const SOCKET clntfd)
 
 	if (roomList.find(roomNum) == roomList.end())
 	{
-		msg += "** 존재하지 않는 대화방입니다.\n\r";
+		msg = "** 존재하지 않는 대화방입니다.\n\r";
 	}
 	else
 	{
 		Room& room = roomList[roomNum];
-		msg += "------------------------- 대화방 정보 -------------------------\n\r";
+		msg = std::format("------------------------- 대화방 정보 -------------------------\n\r\
+[  {}] ( {}/ {}) {}\n\r\
+   개설시간:  {}\n\r", room.roomNum, room.curPartCnt, room.maxPartCnt, room.roomName, room.openTime);
 
-		msg += std::format("[  {}] ( {}/ {}) {}\n\r", 
-			room.roomNum, room.curPartCnt, room.maxPartCnt, room.roomName);
-		//   개설시간:  11:43:47
-		//   참여자: aaa              참여시간:  11:43:47
-		msg += std::format("   개설시간:  {}\n\r", room.openTime);
-
-		for (auto iter = room.roomPartInfo.begin(); iter != room.roomPartInfo.end(); iter++)
+		for (auto iter = room.roomPartInfo.begin(); iter != room.roomPartInfo.end(); ++iter)
 		{
 			// donghyun : 자기 자신도 브로드캐스팅함
 			auto& playerInfo = iter->second;
@@ -151,10 +156,9 @@ void ServerManager::showRoomList(const SOCKET clntfd)
 	msg.reserve(100);
 	
 	msg += "------------------------- 대화방 목록 -------------------------\n\r";
-	for (auto iter = roomList.begin(); iter != roomList.end(); iter++)
+	for (auto iter = roomList.begin(); iter != roomList.end(); ++iter)
 	{
 		Room& room = iter->second;
-		// [  1] ( 1/ 2) test
 		std::string roomInfo = std::format(
 			"[  {}] ( {}/ {}) {}\n\r", room.roomNum, room.curPartCnt, room.maxPartCnt, room.roomName);
 		msg += roomInfo;
@@ -164,7 +168,7 @@ void ServerManager::showRoomList(const SOCKET clntfd)
 	NetworkManager::getInstance().sendMsg(clntfd, msg);
 }
 
-void ServerManager::showPlayerInfo(std::string playerName, const SOCKET clntfd)
+void ServerManager::showPlayerInfo(std::string& playerName, const SOCKET clntfd)
 {
 	
 	std::string msg = "";
@@ -173,20 +177,18 @@ void ServerManager::showPlayerInfo(std::string playerName, const SOCKET clntfd)
 	Player* playerPtr = findPlayerUsingName(playerName);
 	if(nullptr == playerPtr)
 	{
-		msg += std::format("** {}님을 찾을 수 없습니다.\n\r", playerName);
+		msg = std::format("** {}님을 찾을 수 없습니다.\n\r", playerName);
 	}
 	else
 	{
 		Player& player = *playerPtr;
-		//** bbb님은 현재 대기실에 있습니다.
-		//** 접속지: 127.0.0.1 : 57302
 		if (player.m_roomNum > 0)
 		{
-			msg += std::format("** {}님은 현재 {}번 채팅방에 있습니다.\n\r", player.m_name, player.m_roomNum);
+			msg = std::format("** {}님은 현재 {}번 채팅방에 있습니다.\n\r", player.m_name, player.m_roomNum);
 		}
 		else
 		{
-			msg += std::format("** {}님은 현재 대기실에 있습니다.\n\r", player.m_name);
+			msg = std::format("** {}님은 현재 대기실에 있습니다.\n\r", player.m_name);
 		}
 		msg += std::format("** 접속지: {} : {}\n\r", player.m_ip, player.m_port);
 	}
@@ -200,10 +202,9 @@ void ServerManager::showPlayerList(const SOCKET clntfd)
 	msg.reserve(100);
 
 	msg += "------------------------- 이용자 목록 -------------------------\n\r";
-	for(auto iter = playerList.begin(); iter != playerList.end(); iter++)
+	for(auto iter = playerList.begin(); iter != playerList.end(); ++iter)
 	{
 		auto player = iter->second;
-		//이용자: aaa              접속지 : 127.0.0.1 : 63695
 		std::string playerInfo = std::format("이용자: {}              접속지 : {} : {}\n\r", player.m_name, player.m_ip, player.m_port);
 		msg += playerInfo;
 	}
@@ -219,7 +220,7 @@ void ServerManager::joinRoom(const int roomNum, const SOCKET clntfd)
 
 	if (roomList.find(roomNum) == roomList.end())
 	{
-		msg += std::format("** {}번 방은 존재하지 않는 대화방입니다.\n\r", roomNum);
+		msg = std::format("** {}번 방은 존재하지 않는 대화방입니다.\n\r", roomNum);
 		NetworkManager::getInstance().sendMsg(clntfd, msg);
 	}
 	else
@@ -231,18 +232,18 @@ void ServerManager::joinRoom(const int roomNum, const SOCKET clntfd)
 			// donghyun : 만약 최대 인원보다 많아진다면 인원 초과로 입장 불가
 			if (room.curPartCnt + 1 > room.maxPartCnt)
 			{
-				msg += std::format("**방 인원 초과로 입장이 불가능합니다. (현재인원 {} / {})\n\r", 
+				msg = std::format("** 방 인원 초과로 입장이 불가능합니다. (현재인원 {} / {})\n\r", 
 					room.curPartCnt, room.maxPartCnt);
 				NetworkManager::getInstance().sendMsg(clntfd, msg);
 				return;
 			}
 			// donghyun : room에 자기 자신 추가 (현실 시간도)
 			room.roomPartInfo[playerPtr->m_name] = { playerPtr, ServerManager::getInstance().getCurTime() };
-			room.curPartCnt++;
+			++room.curPartCnt;
 
 			playerPtr->m_roomNum = room.roomNum;
 
-			msg += std::format("**{}님이 들어오셨습니다. (현재인원 {} / {})\n\r", 
+			msg = std::format("**{}님이 들어오셨습니다. (현재인원 {} / {})\n\r", 
 				playerPtr->m_name, room.curPartCnt, room.maxPartCnt);
 			broadCastInRoom(room.roomNum, msg);
 		}
@@ -263,38 +264,36 @@ int ServerManager::getChatRoomNum(SOCKET clntfd)
 void ServerManager::broadCastChatInRoom(SOCKET clntfd, int roomNum, std::string& msg)
 {
 	Room& room = roomList[roomNum];
-	size_t roomPartSize = room.roomPartInfo.size();
 
 	std::string broadMsg = "";
 	Player* playerPtr = findPlayerUsingfd(clntfd);
 	if (playerPtr)
 	{
-		broadMsg += playerPtr->m_name + " > ";
-		broadMsg += msg + "\n\r";
+		broadMsg = std::format("{} > {}\n\r", playerPtr->m_name, msg);
 
 		// donghyun : 만약 개인이 채팅치던 게 있으면, 그대로 클라단에 나오게 한다.
-		for (auto iter = room.roomPartInfo.begin(); iter != room.roomPartInfo.end(); iter++)
+		for (auto iter = room.roomPartInfo.begin(); iter != room.roomPartInfo.end(); ++iter)
 		{
-			Player* playerPtr = iter->second.first;
-			if (playerPtr)
+			Player* iterPtr = iter->second.first;
+			if (iterPtr)
 			{
-				std::string subMsg = playerPtr->m_buf;
-				if (playerPtr->m_fd != clntfd)
+				std::string subMsg = iterPtr->m_buf;
+				if (iterPtr->m_fd != clntfd)
 				{
-					if (playerPtr->m_totalStrLen != 0)
+					if (iterPtr->m_totalStrLen != 0)
 					{
-						NetworkManager::getInstance().sendMsg(playerPtr->m_fd, "\n\r");
-						NetworkManager::getInstance().sendMsg(playerPtr->m_fd, broadMsg);
-						NetworkManager::getInstance().sendMsg(playerPtr->m_fd, subMsg.substr(0, playerPtr->m_totalStrLen));
+						NetworkManager::getInstance().sendMsg(iterPtr->m_fd, "\n\r");
+						NetworkManager::getInstance().sendMsg(iterPtr->m_fd, broadMsg);
+						NetworkManager::getInstance().sendMsg(iterPtr->m_fd, subMsg.substr(0, playerPtr->m_totalStrLen));
 					}
 					else
 					{
-						NetworkManager::getInstance().sendMsg(playerPtr->m_fd, broadMsg);
+						NetworkManager::getInstance().sendMsg(iterPtr->m_fd, broadMsg);
 					}
 				}
 				else
 				{
-					NetworkManager::getInstance().sendMsg(playerPtr->m_fd, broadMsg);
+					NetworkManager::getInstance().sendMsg(iterPtr->m_fd, broadMsg);
 				}
 			}
 		}
@@ -305,7 +304,7 @@ void ServerManager::broadCastInRoom(int roomNum, std::string& msg)
 {
 	Room& room = roomList[roomNum];
 
-	for (auto iter = room.roomPartInfo.begin(); iter != room.roomPartInfo.end(); iter++)
+	for (auto iter = room.roomPartInfo.begin(); iter != room.roomPartInfo.end(); ++iter)
 	{
 		// donghyun : 자기 자신도 브로드캐스팅함
 		auto& playerInfo = iter->second;
@@ -338,9 +337,16 @@ void ServerManager::quitRoom(const int roomNum, Player* playerPtr)
 
 	std::string msg = "";
 	msg.reserve(100);
-	msg += std::format("**{}님이 나가셨습니다. (현재인원 {} / {})\n\r",
+	msg = std::format("**{}님이 나가셨습니다. (현재인원 {} / {})\n\r",
 		playerPtr->m_name, room.curPartCnt, room.maxPartCnt);
 	broadCastInRoom(room.roomNum, msg);
+	NetworkManager::getInstance().sendMsg(playerPtr->m_fd, "**채팅방에서 나왔습니다.\n\r");
+
+	// donghyun : 현재 인원이 0명 이하면 방 폭파
+	if (room.curPartCnt <= 0)
+	{
+		roomList.erase(room.roomNum);
+	}
 }
 
 // donghyun : 첫 클라 소켓 연결 요청 시에 사용됨
@@ -367,7 +373,7 @@ Player* ServerManager::findPlayerUsingfd(const SOCKET clntfd)
 Player* ServerManager::findPlayerUsingName(const std::string& playerName)
 {
 	Player* playerPtr = nullptr;
-	for (auto iter = playerList.begin(); iter != playerList.end(); iter++)
+	for (auto iter = playerList.begin(); iter != playerList.end(); ++iter)
 	{
 		if (iter->second.m_name == playerName)
 		{
