@@ -219,6 +219,7 @@ void NetworkManager::parseAndSelectComm(std::string& parsingMsg, const SOCKET cl
 		if (splitStrList.size() == 0 || chatCommandMap.find(splitStrList[0]) == chatCommandMap.end())
 		{
 			sendMsg(clntfd, "정확한 명령어 형식으로 입력해주세요.\n\r");
+			return;
 		}
 
 		std::string commandStr = splitStrList[0];
@@ -333,6 +334,7 @@ void NetworkManager::parseAndSelectComm(std::string& parsingMsg, const SOCKET cl
 		if (splitStrList.size() == 0 || commandMap.find(splitStrList[0]) == commandMap.end())
 		{
 			sendMsg(clntfd, "정확한 명령어 형식으로 입력해주세요.\n\r");
+			return;
 		}
 
 		std::string commandStr = splitStrList[0];
