@@ -123,7 +123,7 @@ void NetworkManager::execute()
 					ServerManager::getInstance().quitPlayer(i);
 					closesocket(cpyReads.fd_array[i]);
 				}
-				else if(buf[totalStrLen - 1] == '\n')
+				else if(buf[totalStrLen - 1] == '\n' || buf[totalStrLen - 1] == '\0')
 				{
 					buf[totalStrLen] = 0;
 
