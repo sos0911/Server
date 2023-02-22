@@ -297,11 +297,11 @@ void NetworkManager::parseAndSelectComm(std::string& parsingMsg, const SOCKET cl
 			}
 			case ChatCommand::TO:
 			{
-				if (splitStrList.size() != static_cast<u_int>(3))
+				/*if (splitStrList.size() != static_cast<u_int>(3))
 				{
 					sendMsg(clntfd, "명령어 인자를 정확히 입력해주세요.\n\r");
 					break;
-				}
+				}*/
 				ServerManager::getInstance().sendWhisper(splitStrList, clntfd);
 				break;
 			}
@@ -412,11 +412,11 @@ void NetworkManager::parseAndSelectComm(std::string& parsingMsg, const SOCKET cl
 			}
 			case Command::TO:
 			{
-				if (splitStrList.size() != static_cast<u_int>(3))
+				/*if (splitStrList.size() != static_cast<u_int>(3))
 				{
 					sendMsg(clntfd, "명령어 인자를 정확히 입력해주세요.\n\r");
 					break;
-				}
+				}*/
 				ServerManager::getInstance().sendWhisper(splitStrList, clntfd);
 				break;
 			}
