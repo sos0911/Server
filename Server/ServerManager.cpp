@@ -7,8 +7,17 @@ ServerManager::ServerManager()
 {
 }
 
-void ServerManager::login(SOCKET clntfd, std::string& playerName)
+void ServerManager::login(SOCKET clntfd, std::vector<std::string>& splitStrList)
 {
+	// donghyun : 이름 재조립
+	int vecSize = static_cast<int>(splitStrList.size());
+	std::string playerName = "";
+	for (int i = 1; i < vecSize - 1; i++)
+	{
+		playerName += splitStrList[i] + " ";
+	}
+	playerName += splitStrList[vecSize - 1];
+
 	// donghyun : 이름 중복 검사
 	if (nullptr == findPlayerUsingName(playerName))
 	{

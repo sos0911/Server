@@ -29,7 +29,7 @@ public:
 	//ServerManager();
 	//virtual ~ServerManager() {}
 
-	void login(SOCKET clntfd, std::string& playerName);
+	void login(SOCKET clntfd, std::vector<std::string>& splitStrList);
 	void showHelp(const SOCKET clntfd);
 	void showChatHelp(const SOCKET clntfd);
 	void createRoom(const SOCKET clntfd, std::string& maxCntStr, std::string& roomName);

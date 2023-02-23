@@ -235,16 +235,6 @@ void NetworkManager::parseAndSelectComm(std::string& parsingMsg, const SOCKET cl
 			// donghyun : 명령어 실행
 			switch (command)
 			{
-			case ChatCommand::LOGIN:
-			{
-				if (splitStrList.size() != static_cast<u_int>(2))
-				{
-					sendMsg(clntfd, "명령어 인자를 정확히 입력해주세요.\n\r");
-					break;
-				}
-				ServerManager::getInstance().login(clntfd, splitStrList[1]);
-				break;
-			}
 			case ChatCommand::H:
 			{
 				if (splitStrList.size() != static_cast<u_int>(1))
@@ -282,6 +272,11 @@ void NetworkManager::parseAndSelectComm(std::string& parsingMsg, const SOCKET cl
 					sendMsg(clntfd, "명령어 인자를 정확히 입력해주세요.\n\r");
 					break;
 				}
+				if (0 == atoi(splitStrList[1].c_str()) && splitStrList[1].compare("0") != 0)
+				{
+					sendMsg(clntfd, "정확한 인자 타입을 넣어 주세요.\n\r");
+					break;
+				}
 				ServerManager::getInstance().showRoomInfo(std::stoi(splitStrList[1]), clntfd);
 				break;
 			}
@@ -297,11 +292,6 @@ void NetworkManager::parseAndSelectComm(std::string& parsingMsg, const SOCKET cl
 			}
 			case ChatCommand::TO:
 			{
-				/*if (splitStrList.size() != static_cast<u_int>(3))
-				{
-					sendMsg(clntfd, "명령어 인자를 정확히 입력해주세요.\n\r");
-					break;
-				}*/
 				ServerManager::getInstance().sendWhisper(splitStrList, clntfd);
 				break;
 			}
@@ -352,12 +342,12 @@ void NetworkManager::parseAndSelectComm(std::string& parsingMsg, const SOCKET cl
 			{
 			case Command::LOGIN:
 			{
-				if (splitStrList.size() != static_cast<u_int>(2))
+				/*if (splitStrList.size() != static_cast<u_int>(2))
 				{
 					sendMsg(clntfd, "명령어 인자를 정확히 입력해주세요.\n\r");
 					break;
-				}
-				ServerManager::getInstance().login(clntfd, splitStrList[1]);
+				}*/
+				ServerManager::getInstance().login(clntfd, splitStrList);
 				break;
 			}
 			case Command::H:
@@ -397,6 +387,11 @@ void NetworkManager::parseAndSelectComm(std::string& parsingMsg, const SOCKET cl
 					sendMsg(clntfd, "명령어 인자를 정확히 입력해주세요.\n\r");
 					break;
 				}
+				if (0 == atoi(splitStrList[1].c_str()) && splitStrList[1].compare("0") != 0)
+				{
+					sendMsg(clntfd, "정확한 인자 타입을 넣어 주세요.\n\r");
+					break;
+				}
 				ServerManager::getInstance().showRoomInfo(std::stoi(splitStrList[1]), clntfd);
 				break;
 			}
@@ -427,6 +422,11 @@ void NetworkManager::parseAndSelectComm(std::string& parsingMsg, const SOCKET cl
 					sendMsg(clntfd, "명령어 인자를 정확히 입력해주세요.\n\r");
 					break;
 				}
+				if (0 == atoi(splitStrList[1].c_str()) && splitStrList[1].compare("0") != 0)
+				{
+					sendMsg(clntfd, "정확한 인자 타입을 넣어 주세요.\n\r");
+					break;
+				}
 				ServerManager::getInstance().createRoom(clntfd, splitStrList[1], splitStrList[2]);
 				break;
 			}
@@ -435,6 +435,11 @@ void NetworkManager::parseAndSelectComm(std::string& parsingMsg, const SOCKET cl
 				if (splitStrList.size() != static_cast<u_int>(2))
 				{
 					sendMsg(clntfd, "명령어 인자를 정확히 입력해주세요.\n\r");
+					break;
+				}
+				if (0 == atoi(splitStrList[1].c_str()) && splitStrList[1].compare("0") != 0)
+				{
+					sendMsg(clntfd, "정확한 인자 타입을 넣어 주세요.\n\r");
 					break;
 				}
 				ServerManager::getInstance().joinRoom(std::stoi(splitStrList[1]), clntfd);
